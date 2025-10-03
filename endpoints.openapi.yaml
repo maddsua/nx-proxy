@@ -1,0 +1,209 @@
+openapi: 3.0.4
+info:
+  title: NX Proxy server endpoints definition - OpenAPI 3.0
+  description: The 'proxytables' AAA 'protocol'. Yeah it's just a REST API that replaces RADIUS because that one is pain in the ass to use
+  version: 0.1.0
+servers:
+  - url: https://<proxyauth.example.com>/
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+    description: The endpoints that you must implement on your side
+
+paths:
+  /table:
+    get:
+      tags:
+        - auth
+      summary: Get proxy slot table
+      description: Must return the full proxying table
+      responses:
+        200:
+          description: Table generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      slots:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              example: "7735b538-76f6-48a4-85da-791567a493a3"
+                              description: Slot's UUID. MUST be a unique value for identification purposes
+                            bind:
+                              type: string
+                              example: "127.0.0.1:1080"
+                            service:
+                              type: string
+                              enum:
+                              - socks
+                              - http
+                            peers:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                    example: "55f9e1df-3ea2-42c7-832b-dda9fbe53764"
+                                    description: Slot peer's (aka client) UUID. Doesn't have to be unique between different slots as it's only used for accounting and similar tracking functionality
+                                  username:
+                                    type: string
+                                    example: "maddsua"
+                                  password:
+                                    type: string
+                                    example: "2YBp4yfTlAGDzwlMDInUMufKK3ud7sDQ"
+                                  bandwidth:
+                                    type: object
+                                    properties:
+                                      rx:
+                                        type: integer
+                                        example: 50000000
+                                        description: Target inbound bandwidth in bytes
+                                      tx:
+                                        type: integer
+                                        example: 50000000
+                                        description: Target outbound bandwidth in bytes
+                                      min_rx:
+                                        type: integer
+                                        example: 100000
+                                        description: Minimal inbound bandwidth per connection
+                                      min_tx:
+                                        type: integer
+                                        example: 100000
+                                        description: Minimal outbound bandwidth per connection
+                                      max_conn:
+                                        type: integer
+                                        example: 100
+                                        description: Connection limit
+        401:
+          description: No token provided (this shouldn't really happen at all)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Hey, identify yourself!"
+        403:
+          description: Auth token invalid for whatever reason. Check error message to learn more
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Yo, your auth token ain't shit!"
+        503:
+          description: Something is really broken on the auth server side
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OOPSIE WOOPSIE!! Uwu we made a fucky wucky"
+  /metrics:
+    post:
+      tags:
+        - auth
+      summary: Send service usage and status
+      description: Reports service status and usage statistics to the auth server
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deltas:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      slot_id:
+                        type: string
+                        example: "7735b538-76f6-48a4-85da-791567a493a3"
+                      peer_id:
+                        type: string
+                        example: "55f9e1df-3ea2-42c7-832b-dda9fbe53764"
+                      data_rx:
+                        type: integer
+                        example: 520186
+                        description: Data volume in bytes recieved since last update
+                      data_tx:
+                        type: integer
+                        example: 265909
+                        description: Data volume in bytes sent since last update
+                service:
+                  type: object
+                  properties:
+                    run_id:
+                      type: string
+                      description: Unique identifier for this specific service run
+                      example: 1eb3e63e-7c29-47bf-967f-5297c2b70cbd
+                    uptime:
+                      type: integer
+                      example: 486
+                      description: Service uptime in seconds
+                    data:
+                      type: object
+                      properties:
+                        total_rx:
+                          type: integer
+                          description: Total data received
+                        total_tx:
+                          type: integer
+                          description: Total data sent
+      responses:
+        204:
+          description: Submitted successfully
+        401:
+          description: No token provided (this shouldn't really happen at all)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Hey, identify yourself!"
+        403:
+          description: Auth token invalid for whatever reason. Check error message to learn more
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Yo, your auth token ain't shit!"
+        503:
+          description: Something is really broken on the auth server side
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "OOPSIE WOOPSIE!! Uwu we made a fucky wucky"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: 'base64(server_uuid).base64(secret_key)'
