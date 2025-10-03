@@ -139,11 +139,11 @@ paths:
                       peer_id:
                         type: string
                         example: "55f9e1df-3ea2-42c7-832b-dda9fbe53764"
-                      data_rx:
+                      rx:
                         type: integer
                         example: 520186
                         description: Data volume in bytes recieved since last update
-                      data_tx:
+                      tx:
                         type: integer
                         example: 265909
                         description: Data volume in bytes sent since last update
@@ -158,7 +158,7 @@ paths:
                       type: integer
                       example: 486
                       description: Service uptime in seconds
-                    data:
+                    data_volume:
                       type: object
                       properties:
                         total_rx:
