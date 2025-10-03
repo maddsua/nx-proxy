@@ -1,9 +1,8 @@
-package api
+package nxproxy
 
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -68,30 +67,36 @@ func fetch[T any](client *Client, method string, path string, payload any) (*T, 
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", client.Token.String()))
 	}
 
-	req = nil
-
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
 	defer resp.Body.Close()
+	req = nil
 
 	switch resp.StatusCode {
 	case http.StatusNoContent:
 		return nil, nil
 	}
 
-	apiResp, err := DecodeAPIResponse[T](resp.Body)
-	if err != nil {
-		return nil, err
+	if strings.Contains(resp.Header.Get("Content-Type"), "json") {
+
+		apiResp, err := DecodeAPIResponse[T](resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("decode: %v", err)
+		}
+
+		if apiResp.Error != nil {
+			return nil, fmt.Errorf("api: %v", apiResp.Error.Message)
+		}
+
+		return apiResp.Data, nil
 	}
 
-	if apiResp.Error != nil {
-		return nil, errors.New(apiResp.Error.Message)
-	} else if apiResp.Data == nil && (resp.StatusCode < http.StatusOK || resp.StatusCode > http.StatusResetContent) {
+	if resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("http: %s", resp.Status)
 	}
 
-	return apiResp.Data, nil
+	return nil, fmt.Errorf("no supported data returned (http: %s)", resp.Status)
 }
